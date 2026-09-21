@@ -54,13 +54,28 @@ contract PonsV2BondingCurve is ReentrancyGuard {
 
     // `fee` and `tax` are reported separately because they fund different
     // parties: the fee splits across protocol, buyback and creator, while the
-    // tax is paid to the creator in full.
+    // tax is paid to the creator in full. The post-trade tracked balances let
+    // indexers reconstruct the curve state without an additional RPC read.
     event CurveBuy(
-        address indexed buyer, address indexed recipient, uint256 quoteIn, uint256 tokensOut, uint256 fee, uint256 tax
+        address indexed buyer,
+        address indexed recipient,
+        uint256 quoteIn,
+        uint256 tokensOut,
+        uint256 fee,
+        uint256 tax,
+        uint256 trackedQuote,
+        uint256 trackedTokens
     );
     event CurveBuyRefunded(address indexed buyer, uint256 refund);
     event CurveSell(
-        address indexed seller, address indexed recipient, uint256 tokensIn, uint256 quoteOut, uint256 fee, uint256 tax
+        address indexed seller,
+        address indexed recipient,
+        uint256 tokensIn,
+        uint256 quoteOut,
+        uint256 fee,
+        uint256 tax,
+        uint256 trackedQuote,
+        uint256 trackedTokens
     );
     event FeesSwept(uint256 protocolAmount, uint256 buybackAmount, uint256 creatorAmount);
     event FeesRescued(
@@ -420,7 +435,7 @@ contract PonsV2BondingCurve is ReentrancyGuard {
             _sendQuote(msg.sender, refund);
         }
 
-        emit CurveBuy(msg.sender, recipient, spent, tokensOut, fee, tax);
+        emit CurveBuy(msg.sender, recipient, spent, tokensOut, fee, tax, trackedQuote, trackedTokens);
         _tryAutoGraduate();
     }
 
@@ -467,7 +482,7 @@ contract PonsV2BondingCurve is ReentrancyGuard {
         trackedTokens += tokensIn;
         _sendQuote(recipient, quoteOut);
 
-        emit CurveSell(msg.sender, recipient, tokensIn, quoteOut, fee, tax);
+        emit CurveSell(msg.sender, recipient, tokensIn, quoteOut, fee, tax, trackedQuote, trackedTokens);
     }
 
     /**
