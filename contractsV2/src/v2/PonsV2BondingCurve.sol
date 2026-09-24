@@ -5,7 +5,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {PonsV2BondingCurveMath} from "./libraries/PonsV2BondingCurveMath.sol"; 
+import {PonsV2BondingCurveMath} from "./libraries/PonsV2BondingCurveMath.sol";
 import {PonsV2BuybackVault} from "./PonsV2BuybackVault.sol";
 import {PonsV2LauncherToken} from "./PonsV2LauncherToken.sol";
 import {FeePolicySnapshot, IPonsV2FeeEscrow, IPonsV2FeePolicy} from "./interfaces/ILaunchpadV2.sol";
@@ -54,8 +54,9 @@ contract PonsV2BondingCurve is ReentrancyGuard {
 
     // `fee` and `tax` are reported separately because they fund different
     // parties: the fee splits across protocol, buyback and creator, while the
-    // tax is paid to the creator in full. The post-trade tracked balances let
-    // indexers reconstruct the curve state without an additional RPC read.
+    // tax is paid to the creator in full. The post-trade reserve snapshots let
+    // indexers read both the pricing state (including phantom quote liquidity)
+    // and the real quote principal without replaying earlier fee accruals.
     event CurveBuy(
         address indexed buyer,
         address indexed recipient,
@@ -63,8 +64,9 @@ contract PonsV2BondingCurve is ReentrancyGuard {
         uint256 tokensOut,
         uint256 fee,
         uint256 tax,
-        uint256 trackedQuote,
-        uint256 trackedTokens
+        uint256 pricingQuoteReserves,
+        uint256 tokenReserves,
+        uint256 realQuoteReserves
     );
     event CurveBuyRefunded(address indexed buyer, uint256 refund);
     event CurveSell(
@@ -74,8 +76,9 @@ contract PonsV2BondingCurve is ReentrancyGuard {
         uint256 quoteOut,
         uint256 fee,
         uint256 tax,
-        uint256 trackedQuote,
-        uint256 trackedTokens
+        uint256 pricingQuoteReserves,
+        uint256 tokenReserves,
+        uint256 realQuoteReserves
     );
     event FeesSwept(uint256 protocolAmount, uint256 buybackAmount, uint256 creatorAmount);
     event FeesRescued(
@@ -435,7 +438,18 @@ contract PonsV2BondingCurve is ReentrancyGuard {
             _sendQuote(msg.sender, refund);
         }
 
-        emit CurveBuy(msg.sender, recipient, spent, tokensOut, fee, tax, trackedQuote, trackedTokens);
+        (uint256 pricingQuoteReserves, uint256 tokenReserves) = getReserves();
+        emit CurveBuy(
+            msg.sender,
+            recipient,
+            spent,
+            tokensOut,
+            fee,
+            tax,
+            pricingQuoteReserves,
+            tokenReserves,
+            pricingQuoteReserves - phantomQuote
+        );
         _tryAutoGraduate();
     }
 
@@ -482,7 +496,18 @@ contract PonsV2BondingCurve is ReentrancyGuard {
         trackedTokens += tokensIn;
         _sendQuote(recipient, quoteOut);
 
-        emit CurveSell(msg.sender, recipient, tokensIn, quoteOut, fee, tax, trackedQuote, trackedTokens);
+        (uint256 pricingQuoteReserves, uint256 tokenReserves) = getReserves();
+        emit CurveSell(
+            msg.sender,
+            recipient,
+            tokensIn,
+            quoteOut,
+            fee,
+            tax,
+            pricingQuoteReserves,
+            tokenReserves,
+            pricingQuoteReserves - phantomQuote
+        );
     }
 
     /**
