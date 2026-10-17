@@ -15,7 +15,7 @@
 [![X](https://img.shields.io/badge/follow-%40ponsdotfamily-1a2740?style=for-the-badge&logo=x&logoColor=white)](https://x.com/ponsdotfamily)
  
 [![OpenZeppelin](https://img.shields.io/badge/security-OpenZeppelin-1a2740?style=flat-square)](#vendor-dependencies)
-[![Uniswap V3](https://img.shields.io/badge/v1%20liquidity-Uniswap%20V3-1a2740?style=flat-square)](#v1--createmm2-factory--locked-uniswap-v3-liquidity)
+[![Uniswap V3](https://img.shields.io/badge/v1%20liquidity-Uniswap%20V3-1a2740?style=flat-square)](#v1--create2-factory--locked-uniswap-v3-liquidity)
 [![Uniswap V4](https://img.shields.io/badge/v2%20liquidity-Uniswap%20V4-1a2740?style=flat-square)](#v2--bonding-curve--graduated-uniswap-v4-pool)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-1a2740?style=flat-square)](#contributing)
      
